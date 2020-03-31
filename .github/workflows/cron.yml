@@ -26,7 +26,7 @@ jobs:
           git config --global user.email 'inefedor@gmail.com'
           git branch -f 'dev-'$(cat version.txt) master
           git checkout 'dev-'$(cat version.txt)
-	  'git add .'
+          git add .
           git commit -am "Release "$(cat version.txt)
           git tag -f $(cat version.txt)
           git push -f
