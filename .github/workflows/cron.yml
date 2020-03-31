@@ -19,6 +19,7 @@ jobs:
       - name: Commit latest release version
         if: steps.git-check.outputs.modified == 'true'
         run: |
+          sudo apt-get install perl
           sed 's/{tag}/'$(cat version.txt)'/g' Dockerfile.template > Dockerfile
           curl -sL https://raw.githubusercontent.com/gliderlabs/logspout/master/modules.go > modules.go
           perl -pe 's/import \(/import\(\n\t_ "github.com\/nikita2206\/logspout-logstash"/' modules.go > modules.go
