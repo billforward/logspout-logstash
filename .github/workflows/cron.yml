@@ -1,0 +1,32 @@
+name: Get latest release version
+on:
+  schedule:
+    - cron:  '0 10 * * *'
+jobs:
+  get-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.REPO_SCOPED_TOKEN }}
+      - name: Fetch release version
+        run: |
+          curl -sL https://api.github.com/repos/gliderlabs/logspout/releases/latest | \
+          jq -r ".tag_name" > version.txt
+      - name: Check for modified files
+        id: git-check
+        run: echo ::set-output name=modified::$(if git diff-index --quiet HEAD --; then echo "false"; else echo "true"; fi)
+      - name: Commit latest release version
+        if: steps.git-check.outputs.modified == 'true'
+        run: |
+          sed 's/{tag}/'$(cat version.txt)'/g' Dockerfile.template > Dockerfile
+          curl -sL https://raw.githubusercontent.com/gliderlabs/logspout/master/modules.go > modules.go
+          perl -pe 's/import \(/import\(\n\t_ "github.com\/nikita2206\/logspout-logstash"/' modules.go > modules.go
+          git config --global user.name 'Nikita Nefedov'
+          git config --global user.email 'inefedor@gmail.com'
+          git branch -f 'dev-'$(cat version.txt) master
+          git checkout 'dev-'$(cat version.txt)
+          git commit -am "Release "$(cat version.txt)
+          git tag -f $(cat version.txt)
+          git push -f
+          git push -f --tags
