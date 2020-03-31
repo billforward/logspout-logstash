@@ -15,7 +15,7 @@ jobs:
           jq -r ".tag_name" > version.txt
       - name: Check for modified files
         id: git-check
-        run: echo ::set-output name=modified::$(if git diff-index --quiet HEAD --; then echo "false"; else echo "true"; fi)
+        run: echo ::set-output name=modified::$(if git tag --list | egrep -q $(cat version.txt); then echo "false"; else echo "true"; fi)
       - name: Commit latest release version
         if: steps.git-check.outputs.modified == 'true'
         run: |
