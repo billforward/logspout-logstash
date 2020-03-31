@@ -1,6 +1,10 @@
 [![GoDoc](https://godoc.org/github.com/looplab/logspout-logstash?status.svg)](https://godoc.org/github.com/looplab/logspout-logstash)
 [![Go Report Card](https://goreportcard.com/badge/looplab/logspout-logstash)](https://goreportcard.com/report/looplab/logspout-logstash)
 
+# Fork status
+
+This fork adds all modules from logspout allowing the use of multiline adapter for example.
+
 # logspout-logstash
 
 A minimalistic adapter for github.com/gliderlabs/logspout to write to Logstash
