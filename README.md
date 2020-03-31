@@ -1,7 +1,9 @@
 
 # Fork status
 
-This fork adds all modules from logspout allowing the use of multiline adapter for example.
+It will automatically add new releases, when new releases of upstream library are made so you can always get up-to-date version of Logspout with LogStash support.
+
+Unlike the parent repo of this fork, it will always include the entirety of Logspout adapters, for example `multiline`.
 
 # logspout-logstash
 

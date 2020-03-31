@@ -29,5 +29,5 @@ jobs:
           git add .
           git commit -am "Release "$(cat version.txt)
           git tag -f $(cat version.txt)
-          git push -f
+          git push -f 'dev-'$(cat version.txt)
           git push -f --tags
