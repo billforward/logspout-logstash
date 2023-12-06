@@ -3,13 +3,15 @@ package logstash
 import (
 	"encoding/json"
 	"errors"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/gliderlabs/logspout/router"
 )
 
@@ -19,11 +21,11 @@ func init() {
 
 // LogstashAdapter is an adapter that streams UDP JSON to Logstash.
 type LogstashAdapter struct {
-	conn             net.Conn
-	route            *router.Route
-	containerTags    map[string][]string
-	logstashFields   map[string]map[string]string
-	decodeJsonLogs   map[string]bool
+	conn           net.Conn
+	route          *router.Route
+	containerTags  map[string][]string
+	logstashFields map[string]map[string]string
+	decodeJsonLogs map[string]bool
 }
 
 // NewLogstashAdapter creates a LogstashAdapter with UDP as the default transport.
@@ -127,6 +129,17 @@ func IsDecodeJsonLogs(c *docker.Container, a *LogstashAdapter) bool {
 	return decodeJsonLogs
 }
 
+// Get hostname of container, searching first for /etc/host_hostname, otherwise
+// using the hostname assigned to the container (typically container ID).
+func GetContainerHostname(c *docker.Container) string {
+	content, err := ioutil.ReadFile("/etc/host_hostname")
+	if err == nil && len(content) > 0 {
+		return strings.Trim(string(content), "\r\n")
+	}
+
+	return c.Config.Hostname
+}
+
 // Stream implements the router.LogAdapter interface.
 func (a *LogstashAdapter) Stream(logstream chan *router.Message) {
 
@@ -136,7 +149,12 @@ func (a *LogstashAdapter) Stream(logstream chan *router.Message) {
 			Name:     m.Container.Name,
 			ID:       m.Container.ID,
 			Image:    m.Container.Config.Image,
-			Hostname: m.Container.Config.Hostname,
+			Hostname: GetContainerHostname(m.Container),
+		}
+
+		// Check if we are sending logs for this container
+		if !containerIncluded(dockerInfo.Name) {
+			continue
 		}
 
 		if os.Getenv("DOCKER_LABELS") != "" {
@@ -195,6 +213,31 @@ func (a *LogstashAdapter) Stream(logstream chan *router.Message) {
 			}
 		}
 	}
+}
+
+// containerIncluded Returns true if this container is in INCLUDE_CONTAINERS, or not env var is set
+func containerIncluded(inputContainerName string) bool {
+	if includeContainers := os.Getenv("INCLUDE_CONTAINERS"); includeContainers != "" {
+		for _, containerName := range strings.Split(includeContainers, ",") {
+			if inputContainerName == containerName {
+				// This contain is included, send this log
+				return true
+			}
+		}
+		return false
+	} else if includeContainers := os.Getenv("INCLUDE_CONTAINERS_REGEX"); includeContainers != "" {
+		compiled, err := regexp.Compile(includeContainers)
+		if err != nil {
+			// Return true by default
+			return true
+		}
+		if compiled.MatchString(inputContainerName) {
+			// This contain is included, send this log
+			return true
+		}
+		return false
+	}
+	return true
 }
 
 type DockerInfo struct {

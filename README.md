@@ -4,6 +4,8 @@
 It will automatically add new releases, when new releases of upstream library are made so you can always get up-to-date version of Logspout with LogStash support.
 
 Unlike the parent repo of this fork, it will always include the entirety of Logspout adapters, for example `multiline`.
+[![GoDoc](https://godoc.org/github.com/looplab/logspout-logstash?status.svg)](https://godoc.org/github.com/looplab/logspout-logstash)
+[![Go Report Card](https://goreportcard.com/badge/looplab/logspout-logstash)](https://goreportcard.com/report/looplab/logspout-logstash)
 
 # logspout-logstash
 
@@ -104,6 +106,39 @@ labels as fields:
 
 To be compatible with Elasticsearch, dots in labels will be replaced with underscores.
 
+By setting `INCLUDE_CONTAINERS` you can specify a comma separated list of container names to only get logs from those containers.  You can also set `INCLUDE_CONTAINERS_REGEX` to use regex to describe the containers to include.
+
+### Using Logspout-Logstash in a swarm
+
+In a swarm, logspout is best deployed as a global service. To support this mode of deployment, the logstash adapter will look for the file `/etc/host_hostname` and, if the file exists and it is not empty, will configure the hostname field with the content of this file. You can then use a volume mount to map a file on the docker hosts with the file `/etc/host_hostname` in the container. The sample compose file below illustrates how this can be done:
+
+```
+version: "3"
+services:
+  logspout:
+    image: localhost/logspout-logstash:latest
+    volumes:
+      # Logspout reads this in and attaches it to the log
+      - /etc/hostname:/etc/host_hostname:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      # IP and port for logstash host
+      - ROUTE_URIS=logstash://host:port
+      # Include all docker labels
+      - DOCKER_LABELS=true
+      # Add environment field to all logs sent to logstash
+      - LOGSTASH_FIELDS=environment=${NODE_ENV}
+    deploy:
+      mode: global
+      resources:
+        limits:
+          cpus: '0.20'
+          memory: 256M
+        reservations:
+          cpus: '0.10'
+          memory: 128M
+```
+
 ### Retrying
 
 Two environment variables control the behaviour of Logspout when the Logstash target isn't available:
@@ -123,6 +158,7 @@ This table shows all available configurations:
 |----------------------|------------|---------------|
 | LOGSTASH_TAGS        | array      | None          |
 | LOGSTASH_FIELDS      | map        | None          |
+| INCLUDE_CONTAINERS   | array      | None          |
 | DOCKER_LABELS        | any        | ""            |
 | RETRY_STARTUP        | any        | ""            |
 | RETRY_SEND           | any        | ""            |
